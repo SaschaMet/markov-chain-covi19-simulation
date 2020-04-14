@@ -1,24 +1,27 @@
-import { randomSample, distance } from '../utils';
+import utilFunctions from "../utils"
 
 import {
-  IDLE, FORWARDED, IGNORED,
-  VENUE, AGENT,
-  SUSPECTIBLE, SICK, RECOVERED, DEAD,
+  DEAD,
+  SICK,
+  AGENT,
+  SUSPECTIBLE,
 } from '../constants';
 
+import applyFixedNodeGrid from './grid';
 import { getNextMarkovStateForAgent, STAY, BASE, applySIRModel } from './markov';
-import { applyFixedNodeGrid } from './grid';
+
+const { randomSample, distance } = utilFunctions
 
 const VENUES = [
   {
     name: 'house',
-    members: simulationState => simulationState.agentsPerHouse,
     isRoot: true,
     count: simulationState => simulationState.houses,
+    members: simulationState => simulationState.agentsPerHouse,
   },
   {
-    name: 'temple',
-    count: simulationState => simulationState.temples,
+    name: 'school',
+    count: simulationState => simulationState.schools,
   },
   {
     name: 'hospital',
@@ -32,85 +35,83 @@ const VENUES = [
     name: 'station',
     count: simulationState => simulationState.busStations,
   },
+  {
+    name: 'office',
+    count: simulationState => simulationState.schools,
+  },
 ];
 
-const VENUE_TRANSITIONS = {
-  'house': ['supermarket', 'station', 'hospital', 'house', 'house', 'house',
-            'house', 'house', 'house', 'house', 'house'],
-  'supermarket': ['base', 'base', 'base', 'supermarket'],
-  'hospital': ['hospital', 'base', 'base', 'base'],
-  'station': ['supermarket', 'base', 'base', 'base', 'temple'],
-  'temple': ['supermarket', 'base', 'base', 'base'],
-};
+const getInitialGraph = (simulationState) => {
+	const nodes = [];
+	const edges = [];
 
-function getInitialGraph(simulationState) {
-  const nodes = [];
-  const edges = [];
+	VENUES.forEach(({
+		name,
+		members,
+		isRoot,
+		count,
+		alignment,
+	}) => {
+		for (let i = 0, nodeIndex = 0; i < count(simulationState); i++, nodeIndex++) {
+			const venueId = `${name}-${i}`;
+			nodes.push({
+				type: 'venue',
+				venue: name,
+				id: venueId,
+				size: 1,
+			});
 
-  VENUES.forEach(({
-    name,
-    members,
-    isRoot,
-    count,
-    alignment,
-  }) => {
-    for (let i = 0, nodeIndex = 0; i < count(simulationState); i++, nodeIndex++) {
-      const venueId = `${name}-${i}`;
-      const venueIndex = nodeIndex;
-      nodes.push({
-        type: 'venue',
-        venue: name,
-        id: venueId,
-        size: 1,
-      });
+			if (!members) {
+				continue;
+			}
 
-      if (!members) {
-        continue;
-      }
+			for (var j = 0; j < members(simulationState); j++, nodeIndex++) {
+				const agentId = `${name}-${i}-${j}`;
+				nodes.push({
+				type: 'agent',
+				location: venueId,
+				base: venueId,
+				id: agentId,
+				size: 1,
+				state: SUSPECTIBLE,
+				});
+				edges.push({
+					'source': agentId,
+					'target': venueId,
+				});
+			}
+		}
+	});
 
-      for (var j = 0; j < members(simulationState); j++, nodeIndex++) {
-        const agentId = `${name}-${i}-${j}`;
-        nodes.push({
-          type: 'agent',
-          location: venueId,
-          base: venueId,
-          id: agentId,
-          size: 1,
-          state: SUSPECTIBLE,
-        });
-        edges.push({
-          'source': agentId,
-          'target': venueId,
-        });
-      }
-    }
-  });
+	const sickAgents = randomSample(
+		nodes.filter(({ type }) => type === 'agent'),
+		simulationState.initialSickAgents
+	);
 
-  const sickAgents = randomSample(
-    nodes.filter(({ type }) => type === 'agent'),
-    simulationState.initialSickAgents
-  );
+	for (const agent of sickAgents) {
+		agent.state = SICK;
+	}
 
-  for (const agent of sickAgents) {
-    agent.state = SICK;
-  }
+	const schools = nodes.filter(node => node.venue === "school")
+	const office = nodes.filter(node => node.venue === "office")
+	const market = nodes.filter(node => node.venue === "supermarket")
 
-  return ({
-    nodes: applyFixedNodeGrid(nodes),
-    edges,
-  });
+	console.log({ schools, office, market })
+
+	return ({
+		nodes: applyFixedNodeGrid(nodes),
+		edges,
+	});
 }
 
-function nextSimulationTick(state, nodes, edges) {
-  const rootVenue = VENUES.find(({ isRoot }) => isRoot);
-
+const nextSimulationTick = (state, nodes, edges) => {
   nodes
     .filter(
       ({ type }) => type === AGENT
     )
     .forEach(
       (agent, i) => {
-        const nextMarkovState = getNextMarkovStateForAgent(agent, VENUE_TRANSITIONS);
+        const nextMarkovState = getNextMarkovStateForAgent(agent);
         const [agentLocation] = agent.location.split('-')
 
         if (
@@ -140,7 +141,6 @@ function nextSimulationTick(state, nodes, edges) {
       }
     );
 
-
   nodes = applySIRModel(nodes, edges);
 
   return {
@@ -150,14 +150,14 @@ function nextSimulationTick(state, nodes, edges) {
   }
 }
 
-function moveAgent(nodes, edges, agent, targetNode) {
+const moveAgent = (nodes, edges, agent, targetNode) => {
   const sourceNode = nodes.find(({ id }) => id === agent.location);
 
   if (targetNode.locked || sourceNode.locked) {
     return;
   }
 
-  const newEdges = edges.map((edge) => {
+  edges.forEach(edge => {
     if (edge.source.id === agent.id) {
       edge.target = targetNode;
     }
@@ -166,17 +166,18 @@ function moveAgent(nodes, edges, agent, targetNode) {
   agent.location = targetNode.id;
 }
 
-function findClosestNode(source, targets) {
-  const closest = targets.reduce(
-    (prev, current) => distance(source, current) < distance(source, prev) ? current : prev
-  );
-
-  return closest;
+const findClosestNode =(source, targets) => {
+  try {
+  return targets.reduce(
+        (prev, current) => distance(source, current) < distance(source, prev) ? current : prev
+      );
+  } catch (error) {
+    return source
+  }
 }
 
 export {
   VENUES,
-  VENUE_TRANSITIONS,
   getInitialGraph,
   nextSimulationTick,
 };

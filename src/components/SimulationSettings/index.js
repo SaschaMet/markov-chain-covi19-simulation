@@ -71,14 +71,24 @@ export default function SimulationSettings({
         /> <span className={ styles.value }>{ simulationState.supermarkets }</span>
       </label>
       <label>
-        Temples <br />
+        Schools <br />
         <input
           type={ 'range' }
-          onChange={ onSettingChange('temples') }
-          value={ simulationState.temples }
+          onChange={ onSettingChange('school') }
+          value={ simulationState.school }
           min={ 0 }
           max={ 10 }
-        /> <span className={ styles.value }>{ simulationState.temples }</span>
+        /> <span className={ styles.value }>{ simulationState.school }</span>
+      </label>
+      <label>
+        Offices <br />
+        <input
+          type={ 'range' }
+          onChange={ onSettingChange('office') }
+          value={ simulationState.office }
+          min={ 0 }
+          max={ 10 }
+        /> <span className={ styles.value }>{ simulationState.office }</span>
       </label>
       </div>
 

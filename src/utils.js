@@ -1,9 +1,8 @@
 import { COLORS as colors } from './constants';
-import React, { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
-export function useInterval(callback, delay) {
+const useInterval = (callback, delay) => {
   // https://overreacted.io/making-setinterval-declarative-with-react-hooks/
-  // danke, dan
   const savedCallback = useRef();
 
   // Remember the latest callback.
@@ -23,10 +22,10 @@ export function useInterval(callback, delay) {
   }, [delay]);
 }
 
-function getRandom(length) { return Math.floor(Math.random() * length); }
+const getRandom = length => (Math.floor(Math.random() * length))
 
-export function randomSample(array, size) {
-  // https://stackoverflow.com/a/37835673
+// https://stackoverflow.com/a/37835673
+const randomSample = (array, size) => {
   var r, i = array.length, end = i - size, temp, swaps = randomSample.swaps;
 
   while (i-- > end) {
@@ -52,11 +51,11 @@ export function randomSample(array, size) {
 }
 randomSample.swaps = [];
 
-export function randomChoice(array) {
+const randomChoice = array => {
   return array[Math.floor(Math.random() * array.length)]
 }
 
-export function shuffle(array) {
+const shuffle = array => {
   // https://stackoverflow.com/a/2450976
   var currentIndex = array.length, temporaryValue, randomIndex;
 
@@ -76,9 +75,9 @@ export function shuffle(array) {
   return array;
 }
 
-export function weightedRandom(spec) {
+const weightedRandom = spec => {
   const random = Math.random();
-  let sum = .0; 
+  let sum = .0;
 
   for (var i in spec) {
     const [prob, value] = spec[i];
@@ -89,11 +88,11 @@ export function weightedRandom(spec) {
   }
 };
 
-export function rangeBetween(min, max) {
+const rangeBetween = (min, max) => {
   return Math.random() * (max - min) + min;
 }
 
-export function shade(value) {
+const shade = value => {
   let sum = 0;
 
   for (var i in colors) {
@@ -108,10 +107,22 @@ export function shade(value) {
   return colors[colors.length - 1];
 }
 
-export function padding(value, max, padded) {
+const padding = (value, max, padded) => {
   return Math.min(Math.max(padded, value), max - 50);
 }
 
-export function distance(source, target) {
+const distance = (source, target) => {
     return Math.sqrt(Math.pow(target.x - source.x, 2) + Math.pow(target.y - source.y, 2))
+}
+
+export default {
+  padding,
+  distance,
+  shade,
+  rangeBetween,
+  weightedRandom,
+  randomChoice,
+  shuffle,
+  useInterval,
+  randomSample
 }

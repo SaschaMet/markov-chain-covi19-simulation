@@ -1,12 +1,13 @@
 import React, { Component } from "react";
 
+import Node from "../Node";
+
 import {
   forceSimulation,
   forceLink,
   forceCollide
 } from "d3-force";
 
-import Node from "./Node";
 
 export default class Graph extends Component {
   constructor(props) {
@@ -22,6 +23,7 @@ export default class Graph extends Component {
           (prev[acc.id] = {
             x: 0,
             y: 0
+          // eslint-disable-next-line no-sequences
           }),
           prev
         ),
@@ -30,11 +32,8 @@ export default class Graph extends Component {
     };
   }
 
-  componentDidMount() {}
-
   componentWillMount() {
     this.runForceSimulation();
-
     this.simulation.on("tick", this.handleTick);
   }
 
@@ -84,7 +83,7 @@ export default class Graph extends Component {
     const { layout } = this.state;
     let updates = {};
 
-    simulation.nodes().map(node => {
+    simulation.nodes().forEach(node => {
       updates[node.id] = node;
     });
 
@@ -105,7 +104,7 @@ export default class Graph extends Component {
   }
 
   render() {
-    const { nodes, edges, width, height, onNodeClick } = this.props;
+    const { nodes, width, height, onNodeClick } = this.props;
     const { layout, current } = this.state;
     return (
       <svg

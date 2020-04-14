@@ -1,18 +1,21 @@
-import React, { Component } from "react";
+import React from "react";
 import classNames from "classnames";
 
-import styles from "./Graph.module.css";
-import { padding, shade } from "./utils";
-import { VENUE, AGENT, SUSPECTIBLE, SICK, RECOVERED, DEAD } from "./constants";
+import utilFunctions from "../../utils"
+import { VENUE, SUSPECTIBLE, SICK, RECOVERED, DEAD } from "../../constants";
 
-function noop() {}
+import styles from "./Node.module.css";
+
+const { padding } = utilFunctions
 
 const ICONS = {
   house: "🏠",
   hospital: "🏥",
-  temple: "🕍",
+  school: "🏫",
   station: "🚌",
-  supermarket: "🛒"
+  supermarket: "🛒",
+  dead: "💀",
+  office: "🏢"
 };
 
 export default function Node({
@@ -22,7 +25,7 @@ export default function Node({
   height,
   type,
   venue,
-  onNodeClick = noop
+  onNodeClick = () => {}
 }) {
   const position = layout[node.id];
   const transform = `translate(
@@ -55,7 +58,7 @@ export default function Node({
         </text>
       ) : node.state === 3 ? (
         <text onClick={onNodeClick(node.id)} x={-8} y={7} fontSize={16}>
-          💀
+          {ICONS.dead}
         </text>
       ) : (
         <circle
