@@ -151,6 +151,14 @@ pre {
   background: #75daad;
 }
 
+.samples .sampleSpreader {
+  color: gray;
+}
+
+.samples .sampleSpreader:before {
+  background: #FF7A11;
+}
+
 .samples i {
   position: absolute;
   color: gray;

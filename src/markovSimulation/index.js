@@ -1,4 +1,5 @@
-import utilFunctions from "../utils"
+/* eslint-disable no-irregular-whitespace */
+/* eslint-disable array-callback-return */
 
 import {
 	DEAD,
@@ -6,14 +7,16 @@ import {
 	AGENT,
 	SUSPECTIBLE,
 	RECOVERED,
+	SPREADER,
 	STAY,
 	BASE,
-	Move
+	Move,
 } from "../constants"
 
+import utilFunctions from "../utils"
 import applyFixedNodeGrid from "../components/Grid/index"
 
-const { randomSample, distance, weightedRandom, randomChoice } = utilFunctions
+const { randomSample, randomChoice, moveAgent, findClosestNode } = utilFunctions
 
 const VENUES = [
 	{
@@ -44,51 +47,6 @@ const VENUES = [
 	},
 ]
 
-// Possibility for transitioning from one state to another
-const SIR_TRANSITION_STATE = {
-	[SUSPECTIBLE]: [
-		[1, SUSPECTIBLE],
-	],
-	[RECOVERED]: [
-		[1, RECOVERED],
-	],
-	[SICK]: [
-		[0.995, SICK],
-		[0.0049, RECOVERED],
-		[0.0001, DEAD],
-	],
-	[DEAD]: [
-		[1, DEAD],
-	],
-}
-
-// Possibility for a suspectible person to get sick when in contact with a sick person
-const DISEASE_SPREAD_TRANSITION = {
-	[SUSPECTIBLE]: [
-		[0.15, SICK],
-		[0.85, SUSPECTIBLE],
-	],
-	[RECOVERED]: [
-		[1, RECOVERED],
-	],
-	[SICK]: [
-		[1, SICK],
-	],
-	[DEAD]: [
-		[1, DEAD],
-	],
-}
-
-// Possible transitions between venues
-const transitionMap = {
-	"supermarket": ["base", "base", "station"],
-	"school": ["school", "base", "base", "station"],
-	"hospital": ["hospital", "base", "base", "station"],
-	"office": ["office", "base", "base", "station"],
-	"station": ["base", "office", "school", "hospital", "supermarket"],
-	"house": ["supermarket", "station", "hospital", "school", "office", "house"],
-}
-
 // Selects the next venue for an agent
 const getNextMarkovStateForAgent = (agent) => {
 	const [agentLocation] = agent.location.split("-")
@@ -100,64 +58,58 @@ const getNextMarkovStateForAgent = (agent) => {
 	return randomChoice(map)
 }
 
-// applies to SIR-Model to each agent in a node
-const applySIRModel = (nodes, edges) => {
-	for (const node of nodes) {
-		if (node.type !== "agent") {
-			continue
-		}
-
-		// get the location of the agent
-		const location = nodes.find(({ id }) => node.location === id)
-
-		// get all the current agents at that location
-		edges
-			.filter(({ target }) => target.id === location.id)
-			.map(({ source }) => source)
-			.forEach(
-				(agent) => {
-					if (agent.id === node.id)
-						return
-
-					// if there is a sick agent at the node,
-					// convert all suspectible agents with a certain probability to the sick status
-					if (node.state === SICK) {
-						agent.state = weightedRandom(DISEASE_SPREAD_TRANSITION[agent.state])
-					}
-
-					// randomly select the next state for a sick person (recovered or dead)
-					agent.state = weightedRandom(SIR_TRANSITION_STATE[agent.state])
-				}
-			)
-	}
+// Possibility for transitioning from one state to another
+// Must be ordered from least likely to most likely!
+const SIR_TRANSITION_STATE = {
+	[SUSPECTIBLE]: [
+		[1, SUSPECTIBLE],
+	],
+	[SPREADER]: [
+		[0.20, SICK], // chance of 20% to get symptoms
+		[1, SPREADER],
+	],
+	[SICK]: [
+		[0.01, DEAD], // 1% chance of dying when having the disease
+		[0.1, RECOVERED], // chance of 10% to recover
+		[1, SICK],
+	],
+	[RECOVERED]: [
+		[1, RECOVERED],
+	],
+	[DEAD]: [
+		[1, DEAD],
+	],
 }
 
-// moves the agents from one venue to another
-const moveAgent = (nodes, edges, agent, targetNode) => {
-	const sourceNode = nodes.find(({ id }) => id === agent.location)
-
-	if (targetNode.locked || sourceNode.locked) {
-		return
-	}
-
-	edges.forEach(edge => {
-		if (edge.source.id === agent.id) {
-			edge.target = targetNode
-		}
-	})
-
-	agent.location = targetNode.id
+// Possibility for a suspectible person to get sick when in contact with a sick person or a spreader
+// Must be ordered from least likely to most likely!
+const DISEASE_SPREAD_TRANSITION = {
+	[SUSPECTIBLE]: [
+		[0.1, SPREADER], // chance of 10% to catch the disease
+		[1, SUSPECTIBLE],
+	],
+	[RECOVERED]: [
+		[1, RECOVERED],
+	],
+	[SICK]: [
+		[1, SICK],
+	],
+	[DEAD]: [
+		[1, DEAD],
+	],
+	[SPREADER]: [
+		[1, SPREADER]
+	],
 }
 
-// helper function to find the closest node (e.g. the closest hospital)
-const findClosestNode =(source, targets) => {
-	try {
-		return targets.reduce(
-			(prev, current) => distance(source, current) < distance(source, prev) ? current : prev
-		)
-	} catch (error) {
-		return source
-	}
+// Possible transitions between venues
+const transitionMap = {
+	"supermarket": ["base", "base", "station"],
+	"school": ["school", "base", "base", "station"],
+	"hospital": ["hospital", "base", "base", "station"],
+	"office": ["office", "base", "base", "station"],
+	"station": ["base", "office", "school", "hospital", "supermarket"],
+	"house": ["supermarket", "station", "station", "hospital", "school", "office", "base", "base", "base"],
 }
 
 // creates the initial graph
@@ -204,13 +156,64 @@ const getInitialGraph = (simulationState) => {
 		simulationState.initialSickAgents
 	)
 	for (const agent of sickAgents) {
-		agent.state = SICK
+		agent.state = SPREADER
 	}
 
 	return ({
 		nodes: applyFixedNodeGrid(nodes),
 		edges,
 	})
+}
+
+const applyModel = (agent, model) => {
+	// get a random number
+	const random = Number(Math.random().toFixed(3))
+	const result = model[agent.state]
+	for(const res of result) {
+		const [probability, value] = res
+		if(random <= probability)
+			return value
+	}
+	return agent.state // fallback
+}
+
+const applySIRModel = (nodes, state) => {
+	// holds all the nodes for the next state with the updated agent states
+	const nextState = []
+
+	// get all the locations where there a infected agents
+	const sickLocations = nodes.reduce((acc, node) => {
+		const { location, state } = node
+		if(state !== SICK && state !== SPREADER)
+			return acc
+
+		if(!acc[location])
+			acc[location] = 0
+
+		acc[location] = acc[location] + 1
+		return acc
+	}, {})
+
+	// iterate through each agent
+	for(const agent of nodes) {
+		if(agent.type === "venue")
+			continue
+
+		// spread the disease
+		if(sickLocations[agent.location])
+			agent.state = applyModel(agent, DISEASE_SPREAD_TRANSITION)
+
+		agent.state = applyModel(agent, SIR_TRANSITION_STATE)
+
+		// add a timestamp for the date the agent was infected
+		if(agent.state === SPREADER) {
+			agent.timeOfInfection = state.tick
+		}
+
+		nextState.push(agent)
+	}
+
+	return nextState
 }
 
 
@@ -256,11 +259,11 @@ const nextSimulationTick = (state, nodes, edges) => {
 		)
 
 	// apply the SIR model
-	nodes = applySIRModel(nodes, edges)
+	nodes = applySIRModel(nodes, state)
 
 	return {
-		nodes: nodes,
-		edges: edges,
+		nodes,
+		edges,
 		state: { ...state, tick: state.tick + 1},
 	}
 }

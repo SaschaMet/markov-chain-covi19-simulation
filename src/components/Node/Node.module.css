@@ -33,6 +33,10 @@
 	fill: #75daad;
 }
 
+.spreader {
+	fill: #FF7A11;
+}
+
 .lockedSymbol {
 	cursor: pointer;
 }

@@ -7,9 +7,12 @@ const SUSPECTIBLE = 0
 const SICK = 1
 const RECOVERED = 2
 const DEAD = 3
+const SPREADER = 4
 
 const COLORS = ["#ECA6E1","#C28CBE","#9B729C","#76597B","#55415B","#362A3C"]
-const FPS = 60
+const FPS = 300
+
+const TICKLENGTH = 1500
 
 const Move = 0.9
 
@@ -29,6 +32,7 @@ export {
 	INITIAL_SIMULATION_STATE,
 	SUSPECTIBLE,
 	SICK,
+	SPREADER,
 	RECOVERED,
 	DEAD,
 	VENUE,
@@ -37,5 +41,6 @@ export {
 	FPS,
 	STAY,
 	BASE,
-	Move
+	Move,
+	TICKLENGTH
 }

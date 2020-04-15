@@ -1,3 +1,4 @@
+/* eslint-disable no-irregular-whitespace */
 import React, { useEffect, useState, useRef } from "react"
 
 import Graph from "../Graph"
@@ -5,7 +6,7 @@ import LineChart from "../LineChart"
 import SimulationSettings from "../SimulationSettings"
 
 import utilFunctions from "../../utils"
-import { SICK, RECOVERED, DEAD, INITIAL_SIMULATION_STATE } from "../../constants"
+import { SICK, RECOVERED, DEAD, SUSPECTIBLE, INITIAL_SIMULATION_STATE, SPREADER, TICKLENGTH } from "../../constants"
 import { nextSimulationTick, getInitialGraph } from "../../markovSimulation"
 
 import styles from "./App.module.css"
@@ -40,7 +41,7 @@ function App() {
 
 		setHistoricalSickCount(
 			historicalSickCount.concat(
-				nodes.filter(({ state }) => state === SICK).length
+				nodes.filter(({ state }) => state === SICK || state === SPREADER).length
 			)
 		)
 
@@ -55,7 +56,7 @@ function App() {
 				nodes.filter(({ state }) => state === DEAD).length
 			)
 		)
-	}, 2500)
+	}, TICKLENGTH)
 
 	useEffect(() => {
 		setLoading(false)
@@ -95,6 +96,7 @@ function App() {
 			<div className={styles.simulation}>
 				<div className={ styles.samples }>
 					<span className={ styles.sampleSuspectible }>Suspectible</span>
+					<span className={ styles.sampleSpreader }>Spreader</span>
 					<span className={ styles.sampleInfected }>Infected</span>
 					<span className={ styles.sampleRecovered }>Recovered</span>
 					<i>Click on a building to lock it (quarantine)</i>
@@ -117,14 +119,19 @@ function App() {
 				<div className={styles.stats}>
 					<h3>Stats</h3>
 					<div className={styles.population}>
-            POPULATION: {nodes.filter(({ type }) => type === "agent").length}{" "}
+							POPULATION: {nodes.filter(({ type }) => type === "agent").length}{" "}
 						<br />
-            DEAD: {nodes.filter(({ state }) => state === DEAD).length} <br />
-            RECOVERED: {
+							DEAD: {nodes.filter(({ state }) => state === DEAD).length} <br />
+							RECOVERED: {
 							nodes.filter(({ state }) => state === RECOVERED).length
 						}{" "}
 						<br />
-            SICK: {nodes.filter(({ state }) => state === SICK).length} <br />
+							SICK: {nodes.filter(({ state }) => state === SICK).length}
+						<br />
+							SPREADER: {nodes.filter(({ state }) => state === SPREADER).length}
+						<br />
+							SUSPECTIBLE: {nodes.filter(({ state }) => state === SUSPECTIBLE).length}
+						<br />
 					</div>
 					{
 						<LineChart
