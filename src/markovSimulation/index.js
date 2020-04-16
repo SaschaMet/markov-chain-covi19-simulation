@@ -47,17 +47,6 @@ const VENUES = [
 	},
 ]
 
-// Selects the next venue for an agent
-const getNextMarkovStateForAgent = (agent) => {
-	const [agentLocation] = agent.location.split("-")
-
-	if (agentLocation === "house" && Math.random() < Move)
-		return STAY
-
-	const map = transitionMap[agentLocation]
-	return randomChoice(map)
-}
-
 // Possibility for transitioning from one state to another
 // Must be ordered from least likely to most likely!
 const SIR_TRANSITION_STATE = {
@@ -110,6 +99,17 @@ const transitionMap = {
 	"office": ["office", "base", "base", "station"],
 	"station": ["base", "office", "school", "hospital", "supermarket"],
 	"house": ["supermarket", "station", "station", "hospital", "school", "office", "base", "base", "base"],
+}
+
+// Selects the next venue for an agent
+const getNextMarkovStateForAgent = (agent) => {
+	const [agentLocation] = agent.location.split("-")
+
+	if (agentLocation === "house" && Math.random() < Move)
+		return STAY
+
+	const map = transitionMap[agentLocation]
+	return randomChoice(map)
 }
 
 // creates the initial graph
@@ -165,14 +165,33 @@ const getInitialGraph = (simulationState) => {
 	})
 }
 
+// the longer the infection, the more likely it is for a patient to die
+const calculateChanceOfDying = (agent) => {
+	if(!agent.daysSinceInfection)
+		return DEAD
+
+	const probability = agent.daysSinceInfection / 10
+	const random = Number(Math.random().toFixed(2))
+
+	if(random < probability)
+		return SICK
+
+	return DEAD
+
+}
+
 const applyModel = (agent, model) => {
 	// get a random number
-	const random = Number(Math.random().toFixed(3))
+	const random = Number(Math.random().toFixed(4))
 	const result = model[agent.state]
 	for(const res of result) {
 		const [probability, value] = res
-		if(random <= probability)
-			return value
+		if(random <= probability) {
+			if(value === DEAD)
+				return calculateChanceOfDying(agent)
+			else
+				return value
+		}
 	}
 	return agent.state // fallback
 }
@@ -207,7 +226,7 @@ const applySIRModel = (nodes, state) => {
 
 		// add a timestamp for the date the agent was infected
 		if(agent.state === SPREADER) {
-			agent.timeOfInfection = state.tick
+			agent.daysSinceInfection = state.tick
 		}
 
 		nextState.push(agent)
