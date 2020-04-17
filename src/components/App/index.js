@@ -97,7 +97,7 @@ function App() {
 				<div className={ styles.samples }>
 					<span className={ styles.sampleSuspectible }>Suspectible</span>
 					<span className={ styles.sampleSpreader }>Spreader</span>
-					<span className={ styles.sampleInfected }>Infected</span>
+					<span className={ styles.sampleInfected }>Sick</span>
 					<span className={ styles.sampleRecovered }>Recovered</span>
 					<i>Click on a building to lock it (quarantine)</i>
 				</div>
@@ -121,17 +121,13 @@ function App() {
 					<div className={styles.population}>
 							POPULATION: {nodes.filter(({ type }) => type === "agent").length}{" "}
 						<br />
-							DEAD: {nodes.filter(({ state }) => state === DEAD).length} <br />
-							RECOVERED: {
-							nodes.filter(({ state }) => state === RECOVERED).length
-						}{" "}
-						<br />
-							SICK: {nodes.filter(({ state }) => state === SICK).length}
-						<br />
-							SPREADER: {nodes.filter(({ state }) => state === SPREADER).length}
-						<br />
 							SUSPECTIBLE: {nodes.filter(({ state }) => state === SUSPECTIBLE).length}
 						<br />
+							INFECTED: {nodes.filter(({ state }) => state === SPREADER).length + nodes.filter(({ state }) => state === SICK).length}
+						<br />
+							DEAD: {nodes.filter(({ state }) => state === DEAD).length}
+						<br />
+							RECOVERED: { nodes.filter(({ state }) => state === RECOVERED).length }
 					</div>
 					{
 						<LineChart
